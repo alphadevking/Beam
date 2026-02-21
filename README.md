@@ -13,10 +13,16 @@ Beam is a cross-platform, local-network chat and file-sharing application. It al
 
 ## 🛠️ Quick Start
 
-### 1. Build the Apps
-You don't need IDEs installed! Use the [GitHub Actions Build Workflow](.github/workflows/build.yml) to get your binaries:
-- **Windows**: Download the `beam-windows-exe` artifact.
-- **Android**: Download the `beam-android-apk` artifact.
+### 1. Download the Apps
+You don't need IDEs installed! Get the latest built binaries from the [GitHub Releases](../../releases).
+
+Every time code is pushed to the `main` branch, an automated GitHub Action builds the latest `.exe` and `.apk` files and creates a Release!
+
+#### Versioning & Releases (For Developers)
+Beam uses **Conventional Commits** for fully automated semantic versioning and releasing. When pushing changes to `main`, prefix your commits to control the next version jump:
+- `fix: ...` drops a *Patch* release (e.g., `v1.0.1` ➔ `v1.0.2`)
+- `feat: ...` drops a *Minor* release (e.g., `v1.0.1` ➔ `v1.1.0`)
+- `feat!: ...` or `BREAKING CHANGE:` drops a *Major* release (e.g., `v1.1.0` ➔ `v2.0.0`)
 
 ### 2. Network Setup
 Ensure your devices are on the same Wi-Fi. On Windows, you may need to allow the app through the firewall (see [Configuration](docs/CONFIGURATION.md)).
