@@ -1,0 +1,38 @@
+# .gitignore for Beam (Windows & Android)
+
+# --- Windows / .NET ---
+[Bb]in/
+[Oo]bj/
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/
+
+# --- Android ---
+.gradle/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+local.properties
+*.apk
+*.aar
+*.bundle
+*.keystore
+*.jks
+
+# --- Android Studio ---
+*.iml
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.idea/dictionaries
+.idea/libraries
+.idea/caches
+
+# --- OS Specific ---
+.DS_Store
+Thumbs.db
+desktop.ini
