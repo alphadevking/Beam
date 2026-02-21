@@ -8,6 +8,8 @@
 *.sln.docstates
 .vs/
 .vscode/
+*.exe
+*.pdb
 
 # --- Android ---
 .gradle/
