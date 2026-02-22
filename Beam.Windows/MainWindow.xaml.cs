@@ -31,6 +31,7 @@ namespace Beam.Windows
             try 
             {
                 _discoveryService.Start();
+                
                 _webSocketHost.OnMessageReceived = (json) =>
                 {
                     Dispatcher.Invoke(() =>
@@ -51,8 +52,28 @@ namespace Beam.Windows
                         }
                     });
                 };
+
+                _webSocketHost.OnClientConnected = (clientIp) =>
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        StatusText.Text = $"📱 Connected ({clientIp})";
+                    });
+                };
+
+                _webSocketHost.OnClientDisconnected = (clientIp) =>
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        if (_webSocketHost.ClientCount == 0)
+                            StatusText.Text = "Waiting for device...";
+                        else
+                            StatusText.Text = $"📱 {_webSocketHost.ClientCount} device(s) connected";
+                    });
+                };
+
                 _webSocketHost.Start();
-                StatusText.Text = "Beam Host Active";
+                StatusText.Text = "Waiting for device...";
                 IpText.Text = $"Local IP: {GetLocalIPAddress()}";
             }
             catch (Exception ex)
@@ -105,7 +126,7 @@ namespace Beam.Windows
                         });
                     });
                     
-                    msg.Content = $"Sent: {System.IO.Path.GetFileName(file)}";
+                    msg.Content = $"Sent: {System.IO.Path.GetFileName(file)} ✓";
                 }
             }
         }
@@ -125,12 +146,10 @@ namespace Beam.Windows
                         Dispatcher.Invoke(() => 
                         {
                             msg.Content = $"Sending: {System.IO.Path.GetFileName(file)} ({progress:F0}%)";
-                            // We need InotifyPropertyChanged if we want this to update live
-                            // For now, let's just update the list if needed or keep it simple
                         });
                     });
                     
-                    msg.Content = $"Sent: {System.IO.Path.GetFileName(file)}";
+                    msg.Content = $"Sent: {System.IO.Path.GetFileName(file)} ✓";
                 }
             }
         }
