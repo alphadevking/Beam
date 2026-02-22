@@ -82,6 +82,34 @@ namespace Beam.Windows
             if (e.Key == Key.Enter) SendMessage();
         }
 
+        private async void Attach_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Multiselect = true,
+                Title = "Select files to send"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                foreach (string file in dialog.FileNames)
+                {
+                    var msg = new ChatMessage { Content = $"Sending: {System.IO.Path.GetFileName(file)}", IsMe = true, Type = "file" };
+                    Messages.Add(msg);
+                    
+                    await _fileSender!.SendFile(file, progress => 
+                    {
+                        Dispatcher.Invoke(() => 
+                        {
+                            msg.Content = $"Sending: {System.IO.Path.GetFileName(file)} ({progress:F0}%)";
+                        });
+                    });
+                    
+                    msg.Content = $"Sent: {System.IO.Path.GetFileName(file)}";
+                }
+            }
+        }
+
         private async void Border_Drop(object sender, DragEventArgs e)
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))

@@ -22,12 +22,15 @@ class MainActivity : AppCompatActivity(), BeamWebSocketClient.BeamSocketListener
     private lateinit var chatRecyclerView: RecyclerView
     private lateinit var messageInput: EditText
     private lateinit var sendButton: MaterialButton
+    private lateinit var attachButton: android.widget.ImageButton
     private lateinit var adapter: MessageAdapter
     private val messages = mutableListOf<ChatMessage>()
+    private var connectedIp: String? = null
     
     private lateinit var discoveryTask: NetworkDiscoveryTask
     private lateinit var webSocketClient: BeamWebSocketClient
     private lateinit var fileReceiver: FileReceiver
+    private lateinit var fileSender: com.beam.network.FileSender
     private val gson = Gson()
     private lateinit var toolbar: MaterialToolbar
 
@@ -45,6 +48,7 @@ class MainActivity : AppCompatActivity(), BeamWebSocketClient.BeamSocketListener
         chatRecyclerView = findViewById(R.id.chatRecyclerView)
         messageInput = findViewById(R.id.messageInput)
         sendButton = findViewById(R.id.sendButton)
+        attachButton = findViewById(R.id.attachButton)
 
         adapter = MessageAdapter(messages)
         chatRecyclerView.layoutManager = LinearLayoutManager(this)
@@ -52,8 +56,11 @@ class MainActivity : AppCompatActivity(), BeamWebSocketClient.BeamSocketListener
 
         fileReceiver = FileReceiver(this)
         webSocketClient = BeamWebSocketClient(this)
+        fileSender = com.beam.network.FileSender(this, webSocketClient)
         discoveryTask = NetworkDiscoveryTask(this) { ip ->
             runOnUiThread {
+                connectedIp = ip
+                toolbar.subtitle = "Connecting to $ip..."
                 webSocketClient.connect(ip)
             }
         }
@@ -63,6 +70,38 @@ class MainActivity : AppCompatActivity(), BeamWebSocketClient.BeamSocketListener
 
         sendButton.setOnClickListener {
             sendMessage()
+        }
+
+        attachButton.setOnClickListener {
+            val intent = Intent(Intent.ACTION_GET_CONTENT)
+            intent.type = "*/*"
+            startActivityForResult(intent, 1001)
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 1001 && resultCode == RESULT_OK) {
+            data?.data?.let { uri ->
+                val fileName = com.beam.network.FileSender.getFileName(this, uri) ?: "unknown_file"
+                // Inform UI
+                val msg = ChatMessage(content = "Sending: $fileName", isMe = true, type = "file")
+                messages.add(msg)
+                val msgIndex = messages.size - 1
+                adapter.notifyItemInserted(msgIndex)
+                chatRecyclerView.scrollToPosition(msgIndex)
+
+                fileSender.sendFile(uri) { progress ->
+                    runOnUiThread {
+                        if (progress < 100) {
+                            messages[msgIndex] = ChatMessage(content = "Sending: $fileName ($progress%)", isMe = true, type = "file")
+                        } else {
+                            messages[msgIndex] = ChatMessage(content = "Sent: $fileName", isMe = true, type = "file")
+                        }
+                        adapter.notifyItemChanged(msgIndex)
+                    }
+                }
+            }
         }
     }
 
@@ -123,7 +162,7 @@ class MainActivity : AppCompatActivity(), BeamWebSocketClient.BeamSocketListener
 
     override fun onConnected() {
         runOnUiThread {
-            toolbar.title = "Beam (Connected)"
+            toolbar.title = "Beam (Connected to PC" + (if (connectedIp != null) " - $connectedIp" else "") + ")"
             toolbar.subtitle = "Ready to send files"
             Toast.makeText(this, "Connected to PC!", Toast.LENGTH_SHORT).show()
         }
