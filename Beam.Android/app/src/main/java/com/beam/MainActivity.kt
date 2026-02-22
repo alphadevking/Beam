@@ -3,8 +3,6 @@ package com.beam
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import android.widget.EditText
-import android.widget.ImageButton
-import android.widget.TextView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.beam.adapters.MessageAdapter
@@ -16,11 +14,14 @@ import com.beam.services.BeamForegroundService
 import android.content.Intent
 import androidx.core.content.ContextCompat
 import com.google.gson.Gson
+import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.button.MaterialButton
+import android.widget.Toast
 
 class MainActivity : AppCompatActivity(), BeamWebSocketClient.BeamSocketListener {
     private lateinit var chatRecyclerView: RecyclerView
     private lateinit var messageInput: EditText
-    private lateinit var sendButton: ImageButton
+    private lateinit var sendButton: MaterialButton
     private lateinit var adapter: MessageAdapter
     private val messages = mutableListOf<ChatMessage>()
     
@@ -28,10 +29,14 @@ class MainActivity : AppCompatActivity(), BeamWebSocketClient.BeamSocketListener
     private lateinit var webSocketClient: BeamWebSocketClient
     private lateinit var fileReceiver: FileReceiver
     private val gson = Gson()
+    private lateinit var toolbar: MaterialToolbar
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        toolbar = findViewById(R.id.toolbar)
+        setSupportActionBar(toolbar)
 
         // Start Foreground Service
         val serviceIntent = Intent(this, BeamForegroundService::class.java)
@@ -52,6 +57,8 @@ class MainActivity : AppCompatActivity(), BeamWebSocketClient.BeamSocketListener
                 webSocketClient.connect(ip)
             }
         }
+        
+        toolbar.subtitle = "Searching for PC..."
         discoveryTask.startListening()
 
         sendButton.setOnClickListener {
@@ -71,13 +78,6 @@ class MainActivity : AppCompatActivity(), BeamWebSocketClient.BeamSocketListener
             webSocketClient.send(json)
             
             messageInput.text.clear()
-        }
-    }
-
-    override fun onConnected() {
-        runOnUiThread {
-            findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar).title = "Beam (Connected)"
-            android.widget.Toast.makeText(this, "Connected to PC!", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -121,10 +121,18 @@ class MainActivity : AppCompatActivity(), BeamWebSocketClient.BeamSocketListener
         }
     }
 
+    override fun onConnected() {
+        runOnUiThread {
+            toolbar.title = "Beam (Connected)"
+            toolbar.subtitle = "Ready to send files"
+            Toast.makeText(this, "Connected to PC!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     override fun onDisconnected() {
         runOnUiThread {
-            findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar).title = "Beam (Disconnected)"
-            // Restart discovery
+            toolbar.title = "Beam (Disconnected)"
+            toolbar.subtitle = "Searching for PC..."
             discoveryTask.startListening()
         }
     }

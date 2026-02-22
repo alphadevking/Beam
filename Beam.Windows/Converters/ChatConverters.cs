@@ -23,8 +23,8 @@ namespace Beam.Windows.Converters
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            return (bool)value ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#007ACC")) 
-                               : new SolidColorBrush((Color)ColorConverter.ConvertFromString("#3E3E42"));
+            return (bool)value ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#D97757")) 
+                               : new SolidColorBrush((Color)ColorConverter.ConvertFromString("#3D302B"));
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

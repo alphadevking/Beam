@@ -1,7 +1,9 @@
 <Window x:Class="Beam.Windows.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Beam - Local Chat" Height="450" Width="800" Background="#1E1E1E">
+        Title="Beam" Height="600" Width="900" 
+        Background="{StaticResource BrushDark}" 
+        FontFamily="Segoe UI Semibold">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -9,25 +11,36 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <Border Background="#2D2D30" Padding="15,10">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock Text="Beam" FontSize="20" Foreground="#007ACC" FontWeight="Bold"/>
-                <TextBlock x:Name="StatusText" Text="Starting..." Foreground="#AAAAAA" VerticalAlignment="Center" Margin="15,0,0,0"/>
-                <TextBlock x:Name="IpText" Text="IP" Foreground="#888888" VerticalAlignment="Center" Margin="15,0,0,0"/>
-            </StackPanel>
+        <!-- Modern Header -->
+        <Border Background="{StaticResource BrushSurface}" Padding="20,15" BorderBrush="#4A3B35" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="BEAM" FontSize="22" Foreground="{StaticResource BrushPrimary}" FontWeight="ExtraBold" LetterSpacing="2"/>
+                    <Border Background="#22D97757" CornerRadius="12" Padding="10,2" Margin="15,0,0,0" VerticalAlignment="Center">
+                        <TextBlock x:Name="StatusText" Text="Starting..." Foreground="{StaticResource BrushPrimary}" FontSize="12" FontWeight="Bold"/>
+                    </Border>
+                </StackPanel>
+                <TextBlock x:Name="IpText" Grid.Column="1" Text="Local IP: --" Foreground="{StaticResource BrushTextDim}" VerticalAlignment="Center" FontSize="12"/>
+            </Grid>
         </Border>
 
         <!-- Chat Area -->
-        <ListBox x:Name="ChatList" Grid.Row="1" Background="#1E1E1E" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+        <ListBox x:Name="ChatList" Grid.Row="1" Background="Transparent" BorderThickness="0" Padding="10" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
             <ListBox.ItemTemplate>
                 <DataTemplate>
-                    <Border CornerRadius="10" Padding="10" Margin="5" MaxWidth="500"
+                    <Border CornerRadius="14" Padding="12,10" Margin="0,6" MaxWidth="550"
                             HorizontalAlignment="{Binding IsMe, Converter={StaticResource BooleanToAlignmentConverter}}"
                             Background="{Binding IsMe, Converter={StaticResource BooleanToColorConverter}}">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="10" ShadowDepth="1" Opacity="0.1"/>
+                        </Border.Effect>
                         <StackPanel>
-                            <TextBlock Text="{Binding Content}" Foreground="White" TextWrapping="Wrap" FontSize="14"/>
-                            <TextBlock Text="{Binding Timestamp, StringFormat=HH:mm}" Foreground="#888888" FontSize="10" HorizontalAlignment="Right" Margin="0,5,0,0"/>
+                            <TextBlock Text="{Binding Content}" Foreground="White" TextWrapping="Wrap" FontSize="14" LineHeight="20"/>
+                            <TextBlock Text="{Binding Timestamp, StringFormat=HH:mm}" Foreground="#CCF1F5F9" FontSize="10" HorizontalAlignment="Right" Margin="0,4,0,0" Opacity="0.7"/>
                         </StackPanel>
                     </Border>
                 </DataTemplate>
@@ -46,18 +59,16 @@
             </ListBox.ItemContainerStyle>
         </ListBox>
 
-        <!-- Input Area -->
-        <Border Grid.Row="2" Background="#2D2D30" Padding="10" AllowDrop="True" Drop="Border_Drop" DragOver="Border_DragOver">
+        <!-- Modern Input Area -->
+        <Border Grid.Row="2" Background="{StaticResource BrushSurface}" Padding="15" BorderBrush="#4A3B35" BorderThickness="0,1,0,0" AllowDrop="True" Drop="Border_Drop" DragOver="Border_DragOver">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBox x:Name="InputBox" Background="#3E3E42" Foreground="White" BorderThickness="0" Padding="10" FontSize="14" 
-                         VerticalContentAlignment="Center" KeyDown="InputBox_KeyDown"
-                         Tag="Type a message or drop a file..."/>
-                <Button Grid.Column="1" Content="Send" Margin="10,0,0,0" Padding="20,5" Background="#007ACC" Foreground="White" 
-                        BorderThickness="0" Click="Send_Click"/>
+                <TextBox x:Name="InputBox" Style="{StaticResource ModernTextBox}" 
+                         Tag="Type a message or drop a file..." KeyDown="InputBox_KeyDown"/>
+                <Button Grid.Column="1" Content="Send" Style="{StaticResource ModernButton}" Margin="12,0,0,0" Click="Send_Click"/>
             </Grid>
         </Border>
     </Grid>

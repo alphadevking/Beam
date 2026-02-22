@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#D97757</color>
+    <color name="primary_variant">#BF6548</color>
+    <color name="on_primary">#FFFFFF</color>
+    
+    <color name="background">#1A1614</color>
+    <color name="surface">#2D2420</color>
+    <color name="on_surface">#F5F2ED</color>
+    <color name="on_surface_variant">#BFA094</color>
+    
+    <color name="bubble_me">#D97757</color>
+    <color name="bubble_them">#3D302B</color>
+    
+    <color name="border">#4A3B35</color>
+</resources>
