@@ -17,7 +17,12 @@ class NetworkDiscoveryTask(private val context: Context, private val onServerFou
     fun startListening() {
         isListening = true
         Thread {
+            val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val lock = wifiManager.createMulticastLock("BeamDiscoveryLock")
+            lock.setReferenceCounted(true)
+            
             try {
+                lock.acquire()
                 socket = DatagramSocket(PORT)
                 socket?.broadcast = true
                 val buffer = ByteArray(1024)
@@ -33,12 +38,12 @@ class NetworkDiscoveryTask(private val context: Context, private val onServerFou
                         val serverIp = packet.address.hostAddress
                         Log.d("Beam", "Server found at: $serverIp")
                         onServerFound(serverIp!!)
-                        isListening = false // Stop after finding
                     }
                 }
             } catch (e: Exception) {
                 Log.e("Beam", "UDP Error: ${e.message}")
             } finally {
+                if (lock.isHeld) lock.release()
                 socket?.close()
             }
         }.start()

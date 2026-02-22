@@ -76,7 +76,8 @@ class MainActivity : AppCompatActivity(), BeamWebSocketClient.BeamSocketListener
 
     override fun onConnected() {
         runOnUiThread {
-            // Optional: Show toast or update toolbar
+            findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar).title = "Beam (Connected)"
+            android.widget.Toast.makeText(this, "Connected to PC!", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -121,7 +122,11 @@ class MainActivity : AppCompatActivity(), BeamWebSocketClient.BeamSocketListener
     }
 
     override fun onDisconnected() {
-        // Handle reconnection or status update
+        runOnUiThread {
+            findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar).title = "Beam (Disconnected)"
+            // Restart discovery
+            discoveryTask.startListening()
+        }
     }
 
     override fun onDestroy() {
