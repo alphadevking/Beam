@@ -64,12 +64,14 @@ jobs:
 
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v4
-      with:
-        gradle-version: 8.9
+
+    - name: Make Gradlew Executable
+      working-directory: Beam.Android
+      run: chmod +x gradlew
 
     - name: Build Android APK
       working-directory: Beam.Android
-      run: gradle assembleDebug -PversionName=${{ needs.version.outputs.app_version }} -PversionCode=${{ github.run_number }}
+      run: ./gradlew assembleDebug -PversionName=${{ needs.version.outputs.app_version }} -PversionCode=${{ github.run_number }}
 
     - name: Upload Android APK
       uses: actions/upload-artifact@v4
