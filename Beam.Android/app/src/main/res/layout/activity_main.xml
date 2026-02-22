@@ -32,21 +32,31 @@
         android:paddingVertical="8dp"
         android:clipToPadding="false" />
 
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/border"/>
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="12dp"
+        android:padding="8dp"
         android:background="@color/surface"
         android:gravity="center_vertical">
 
-        <ImageButton
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/attachButton"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@android:drawable/ic_menu_upload"
-            app:tint="@color/primary" />
+            android:text="📎"
+            android:textSize="20sp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:padding="0dp"
+            app:rippleColor="@color/primary"/>
 
         <EditText
             android:id="@+id/messageInput"

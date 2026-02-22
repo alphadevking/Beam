@@ -17,12 +17,15 @@ import com.google.gson.Gson
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import android.widget.Toast
+import android.view.Menu
+import android.view.MenuItem
+import androidx.appcompat.app.AlertDialog
 
 class MainActivity : AppCompatActivity(), BeamWebSocketClient.BeamSocketListener {
     private lateinit var chatRecyclerView: RecyclerView
     private lateinit var messageInput: EditText
     private lateinit var sendButton: MaterialButton
-    private lateinit var attachButton: android.widget.ImageButton
+    private lateinit var attachButton: MaterialButton
     private lateinit var adapter: MessageAdapter
     private val messages = mutableListOf<ChatMessage>()
     private var connectedIp: String? = null
@@ -79,12 +82,49 @@ class MainActivity : AppCompatActivity(), BeamWebSocketClient.BeamSocketListener
         }
     }
 
+    // --- Manual IP Entry via Toolbar Menu ---
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menu?.add(0, 1, 0, "Connect manually")
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == 1) {
+            showManualIpDialog()
+            return true
+        }
+        return super.onOptionsItemSelected(item)
+    }
+
+    private fun showManualIpDialog() {
+        val input = EditText(this)
+        input.hint = "e.g. 192.168.43.100"
+        input.inputType = android.text.InputType.TYPE_CLASS_TEXT
+        input.setPadding(60, 40, 60, 20)
+
+        AlertDialog.Builder(this)
+            .setTitle("Connect to PC")
+            .setMessage("Enter the PC's IP address (shown at the top-right of the Beam window on your PC):")
+            .setView(input)
+            .setPositiveButton("Connect") { _, _ ->
+                val ip = input.text.toString().trim()
+                if (ip.isNotBlank()) {
+                    // Stop auto-discovery
+                    discoveryTask.stopListening()
+                    connectedIp = ip
+                    toolbar.subtitle = "Connecting to $ip..."
+                    webSocketClient.connect(ip)
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 1001 && resultCode == RESULT_OK) {
             data?.data?.let { uri ->
                 val fileName = com.beam.network.FileSender.getFileName(this, uri) ?: "unknown_file"
-                // Inform UI
                 val msg = ChatMessage(content = "Sending: $fileName", isMe = true, type = "file")
                 messages.add(msg)
                 val msgIndex = messages.size - 1
@@ -96,7 +136,7 @@ class MainActivity : AppCompatActivity(), BeamWebSocketClient.BeamSocketListener
                         if (progress < 100) {
                             messages[msgIndex] = ChatMessage(content = "Sending: $fileName ($progress%)", isMe = true, type = "file")
                         } else {
-                            messages[msgIndex] = ChatMessage(content = "Sent: $fileName", isMe = true, type = "file")
+                            messages[msgIndex] = ChatMessage(content = "Sent: $fileName ✓", isMe = true, type = "file")
                         }
                         adapter.notifyItemChanged(msgIndex)
                     }
@@ -139,7 +179,7 @@ class MainActivity : AppCompatActivity(), BeamWebSocketClient.BeamSocketListener
                     
                     fileReceiver.handleChunk(name, index, total, base64) { fileName, progress ->
                         runOnUiThread {
-                            val statusMsg = if (progress < 100) "Receiving: $fileName ($progress%)" else "Received: $fileName"
+                            val statusMsg = if (progress < 100) "Receiving: $fileName ($progress%)" else "Received: $fileName ✓"
                             val lastMsg = messages.lastOrNull()
                             if (lastMsg != null && lastMsg.content.startsWith("Receiving: $fileName")) {
                                 val idx = messages.size - 1
@@ -162,17 +202,20 @@ class MainActivity : AppCompatActivity(), BeamWebSocketClient.BeamSocketListener
 
     override fun onConnected() {
         runOnUiThread {
-            toolbar.title = "Beam (Connected to PC" + (if (connectedIp != null) " - $connectedIp" else "") + ")"
-            toolbar.subtitle = "Ready to send files"
+            toolbar.title = "Beam"
+            toolbar.subtitle = "Connected to PC" + (if (connectedIp != null) " ($connectedIp)" else "")
             Toast.makeText(this, "Connected to PC!", Toast.LENGTH_SHORT).show()
         }
     }
 
     override fun onDisconnected() {
         runOnUiThread {
-            toolbar.title = "Beam (Disconnected)"
-            toolbar.subtitle = "Searching for PC..."
-            discoveryTask.startListening()
+            toolbar.title = "Beam"
+            toolbar.subtitle = "Disconnected — tap ⋮ to connect manually"
+            // Don't auto-restart discovery if user connected manually
+            if (connectedIp == null) {
+                discoveryTask.startListening()
+            }
         }
     }
 
