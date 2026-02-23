@@ -26,6 +26,7 @@ local.properties
 
 # ---# Local Build Output
 /build_output/
+build_all.bat
 
 # --- Android Studio ---
 *.iml
