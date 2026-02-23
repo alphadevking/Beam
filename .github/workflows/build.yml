@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Create an Official Release? (Tags and publishes the artifacts)'
+        required: true
+        type: boolean
+        default: false
 
 jobs:
   version:
@@ -25,7 +31,7 @@ jobs:
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         default_bump: patch
-        dry_run: ${{ github.event_name == 'pull_request' }}
+        dry_run: ${{ github.event_name != 'workflow_dispatch' || inputs.publish_release != 'true' }}
 
   build-windows:
     needs: version
@@ -81,7 +87,7 @@ jobs:
 
   release:
     needs: [version, build-windows, build-android]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_release == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
