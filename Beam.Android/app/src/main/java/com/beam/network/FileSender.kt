@@ -4,13 +4,18 @@ import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Base64
+import android.util.Log
 import com.google.gson.Gson
 import java.io.InputStream
+import java.security.MessageDigest
 import kotlin.math.ceil
+import java.util.concurrent.Semaphore
 
-class FileSender(private val context: Context, private val webSocketClient: BeamWebSocketClient) {
+class FileSender(private val context: Context, private val tcpClient: BeamTcpClient) {
     private val gson = Gson()
-    private val CHUNK_SIZE = 512 * 1024 // 512KB chunks
+    private val CHUNK_SIZE = 256 * 1024 // 256KB for higher throughput
+    private val MAX_RETRIES = 5
+    private val RETRY_DELAY_MS = 200L
 
     fun sendFile(uri: Uri, onProgress: (Int) -> Unit) {
         val fileName = getFileName(context, uri) ?: "unknown_file"
@@ -18,42 +23,43 @@ class FileSender(private val context: Context, private val webSocketClient: Beam
         Thread {
             try {
                 val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
-                if (inputStream != null) {
-                    val availableBytes = inputStream.available()
-                    val buffer = ByteArray(CHUNK_SIZE)
-                    var bytesRead: Int
-                    var chunkIndex = 0
-                    // approximate total chunks
-                    val totalChunks = ceil(availableBytes.toDouble() / CHUNK_SIZE).toInt()
+                val fileSize = context.contentResolver.openFileDescriptor(uri, "r")?.use { 
+                    it.statSize 
+                } ?: 0L
 
-                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                        val base64Data = Base64.encodeToString(buffer.copyOfRange(0, bytesRead), Base64.NO_WRAP)
-                        
-                        val payload = mapOf(
-                            "type" to "file_chunk",
-                            "name" to fileName,
-                            "chunkIndex" to chunkIndex,
-                            "totalChunks" to totalChunks,
-                            "data" to base64Data
-                        )
-                        
-                        webSocketClient.send(gson.toJson(payload))
-                        
-                        chunkIndex++
-                        val progress = ((chunkIndex.toDouble() / totalChunks) * 100).toInt()
+                if (inputStream != null && fileSize > 0) {
+                    waitForConnection()
+                    val success = tcpClient.sendStream(inputStream, fileName, fileSize) { progress ->
                         onProgress(progress)
-
-                        // brief sleep to prevent flooding the socket buffer
-                        Thread.sleep(50)
+                    }
+                    if (success) {
+                        Log.d("Beam", "File sent successfully: $fileName")
+                    } else {
+                        Log.e("Beam", "Failed to send file: $fileName")
                     }
                     inputStream.close()
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("Beam", "FileSender error: ${e.message}")
             }
         }.start()
     }
 
+    private fun waitForConnection() {
+        while (!tcpClient.isConnected) {
+            Thread.sleep(500)
+        }
+    }
+
+    private fun sendWithRetry(json: String) {
+        var success = tcpClient.send(json)
+        while (!success) {
+            Thread.sleep(200)
+            waitForConnection()
+            success = tcpClient.send(json)
+        }
+    }
+    
     companion object {
         fun getFileName(context: Context, uri: Uri): String? {
             var result: String? = null

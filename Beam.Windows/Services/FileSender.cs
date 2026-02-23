@@ -1,5 +1,8 @@
 using System;
 using System.IO;
+using System.Net;
+using System.Security.Cryptography;
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
@@ -7,13 +10,17 @@ namespace Beam.Windows.Services
 {
     public class FileSender
     {
-        private const int ChunkSize = 512 * 1024; // 512KB chunks for stability
-        private readonly WebSocketHost _host;
+        private const int ChunkSize = 256 * 1024; // 256KB for higher throughput
+        private const int MaxRetries = 5;
 
-        public FileSender(WebSocketHost host)
+        private readonly TcpHost _host;
+
+        public FileSender(TcpHost host)
         {
             _host = host;
         }
+
+
 
         public async Task SendFile(string filePath, Action<double> onProgress)
         {
@@ -21,34 +28,30 @@ namespace Beam.Windows.Services
 
             string fileName = Path.GetFileName(filePath);
             long fileSize = new FileInfo(filePath).Length;
-            int totalChunks = (int)Math.Ceiling((double)fileSize / ChunkSize);
 
-            using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, ChunkSize, true);
-            byte[] buffer = new byte[ChunkSize];
-            int bytesRead;
-            int chunkIndex = 0;
+            _host.IsTransferActive = true;
 
-            while ((bytesRead = await fs.ReadAsync(buffer, 0, buffer.Length)) > 0)
+            using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4 * 1024 * 1024, true))
             {
-                // Only payload creation is the significant allocation remaining
-                var payload = new
+                await _host.BroadcastStreamAsync(fs, fileName, fileSize, progress => 
                 {
-                    type = "file_chunk",
-                    name = fileName,
-                    chunkIndex = chunkIndex,
-                    totalChunks = totalChunks,
-                    // Substring optimization if the buffer is larger than bytesRead
-                    data = Convert.ToBase64String(buffer, 0, bytesRead)
-                };
-
-                _host.Broadcast(JsonConvert.SerializeObject(payload));
-                
-                chunkIndex++;
-                onProgress?.Invoke((double)chunkIndex / totalChunks * 100);
-                
-                // Adaptive delay: wait longer for larger chunks to let the network clear
-                await Task.Delay(5);
+                    onProgress?.Invoke(progress);
+                });
             }
+
+            _host.IsTransferActive = false;
+        }
+
+        private static void WriteInt32BE(Stream s, int value)
+        {
+            int be = IPAddress.HostToNetworkOrder(value);
+            s.Write(BitConverter.GetBytes(be), 0, 4);
+        }
+
+        private static void WriteInt16BE(Stream s, short value)
+        {
+            short be = IPAddress.HostToNetworkOrder(value);
+            s.Write(BitConverter.GetBytes(be), 0, 2);
         }
     }
 }

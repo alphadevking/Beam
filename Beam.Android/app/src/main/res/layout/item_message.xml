@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/messageContainer"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -13,16 +14,167 @@
         android:paddingHorizontal="16dp"
         android:paddingVertical="10dp"
         android:textSize="15sp"
-        android:maxWidth="280dp"
-        android:textColor="@color/on_surface"
-        android:lineSpacingExtra="4sp"/>
-    
-    <TextView
-        android:id="@+id/timeText"
+        android:maxWidth="290dp"
+        android:textColor="#FFFFFF"
+        android:textIsSelectable="true"
+        android:lineSpacingExtra="3sp"
+        android:elevation="1dp"
+        android:layout_marginVertical="2dp"/>
+        
+    <LinearLayout
+        android:id="@+id/fileAttachmentLayout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="@color/on_surface_variant"
-        android:textSize="10sp"
-        android:layout_marginTop="2dp"
-        android:layout_marginHorizontal="8dp"/>
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:padding="12dp"
+        android:layout_marginVertical="4dp"
+        android:background="@drawable/bg_file_card"
+        android:elevation="2dp">
+        
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:minWidth="220dp">
+
+            <FrameLayout
+                android:id="@+id/fileIconContainer"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_file_card"
+                android:backgroundTint="#22FFFFFF">
+                
+                <ImageView
+                    android:id="@+id/fileIcon"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_document"
+                    android:tint="#FFFFFF" />
+            </FrameLayout>
+            
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="12dp">
+                
+                <TextView
+                    android:id="@+id/fileNameText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:ellipsize="middle"
+                    android:singleLine="true"/>
+                    
+                <TextView
+                    android:id="@+id/fileSizeText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="11sp"
+                    android:textColor="#CCFFFFFF"
+                    android:text="Checking..."
+                    android:layout_marginTop="2dp"/>
+            </LinearLayout>
+            
+            <TextView
+                android:id="@+id/fileProgressText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="@color/primary"
+                android:layout_marginStart="8dp"/>
+        </LinearLayout>
+
+        <ProgressBar
+            android:id="@+id/fileProgressBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:layout_marginTop="12dp"
+            android:progressDrawable="@android:drawable/progress_horizontal"
+            android:progressTint="@color/primary"
+            android:backgroundTint="#20FFFFFF"/>
+            
+        <LinearLayout
+            android:id="@+id/fileActionLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp"
+            android:visibility="gone">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/openButton"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:text="Open"
+                android:textSize="12sp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:backgroundTint="#20FFFFFF"
+                android:textColor="#FFFFFF"
+                app:cornerRadius="8dp"
+                style="@style/Widget.Material3.Button.TonalButton"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/saveButton"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="Save"
+                android:textSize="12sp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:backgroundTint="#10FFFFFF"
+                android:textColor="#CCFFFFFF"
+                app:cornerRadius="8dp"
+                style="@style/Widget.Material3.Button.TonalButton"/>
+        </LinearLayout>
+    </LinearLayout>
+    
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="1dp"
+        android:layout_marginHorizontal="8dp"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/senderNameText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/on_surface_variant"
+            android:textSize="10sp"
+            android:visibility="gone"
+            android:layout_marginEnd="6dp"
+            android:textAllCaps="true"
+            android:letterSpacing="0.05"/>
+        
+        <TextView
+            android:id="@+id/timeText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/on_surface_variant"
+            android:textSize="10sp"
+            android:alpha="0.7"/>
+
+        <TextView
+            android:id="@+id/deliveryStatusText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/primary"
+            android:textSize="10sp"
+            android:layout_marginStart="4dp"
+            android:alpha="0.8"/>
+    </LinearLayout>
 </LinearLayout>

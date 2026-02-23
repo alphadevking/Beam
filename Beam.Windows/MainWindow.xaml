@@ -3,46 +3,124 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Beam" Height="600" Width="900" 
         Background="{StaticResource BrushDark}" 
-        FontFamily="Segoe UI Semibold">
+        FontFamily="Segoe UI Semibold"
+        Icon="Resources/beam_logo.png">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Modern Header -->
-        <Border Background="{StaticResource BrushSurface}" Padding="20,15" BorderBrush="#4A3B35" BorderThickness="0,0,0,1">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="BEAM" FontSize="22" Foreground="{StaticResource BrushPrimary}" FontWeight="ExtraBold"/>
-                    <Border Background="#22D97757" CornerRadius="12" Padding="10,2" Margin="15,0,0,0" VerticalAlignment="Center">
-                        <TextBlock x:Name="StatusText" Text="Starting..." Foreground="{StaticResource BrushPrimary}" FontSize="12" FontWeight="Bold"/>
-                    </Border>
+        <!-- Modern Header (Stitch Style) -->
+        <Border Grid.Row="0" Background="#CC0F1923" BorderBrush="#0DFFFFFF" BorderThickness="0,0,0,1">
+            <DockPanel LastChildFill="True" Margin="24,16">
+                <!-- Status Icons -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="&#xE81C;" FontFamily="Segoe MDL2 Assets" Background="Transparent" Foreground="{StaticResource BrushTextDim}" BorderThickness="0" Margin="8,0" FontSize="16" Cursor="Hand" ToolTip="History"/>
+                    <Button Content="&#xE713;" FontFamily="Segoe MDL2 Assets" Background="Transparent" Foreground="{StaticResource BrushTextDim}" BorderThickness="0" Margin="8,0" FontSize="16" Cursor="Hand" ToolTip="Settings"/>
+                    <Button Content="&#xE712;" FontFamily="Segoe MDL2 Assets" Background="Transparent" Foreground="{StaticResource BrushTextDim}" BorderThickness="0" Margin="8,0" FontSize="16" Cursor="Hand" ToolTip="More"/>
                 </StackPanel>
-                <TextBlock x:Name="IpText" Grid.Column="1" Text="Local IP: --" Foreground="{StaticResource BrushTextDim}" VerticalAlignment="Center" FontSize="12"/>
-            </Grid>
+
+                <!-- Beam Logo & Connection Status -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Grid Width="40" Height="40" Margin="0,0,16,0">
+                        <Border CornerRadius="10" Background="{StaticResource BrushPrimaryTransparent}" BorderBrush="{StaticResource BrushPrimary}" BorderThickness="1"/>
+                        <Image Source="/Resources/beam_logo.png" Width="28" Height="28" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Grid>
+                    <StackPanel>
+                        <TextBlock Text="Beam" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,0,0,2"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="8" Height="8" Fill="{StaticResource BrushPrimary}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="ConnectionText" Text="Waiting for connection..." FontSize="11" Foreground="{StaticResource BrushTextDim}" VerticalAlignment="Center"/>
+                            <TextBlock Text=" • " Foreground="{StaticResource BrushTextDim}" FontSize="11" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="IPText" Text="Searching..." FontFamily="Consolas" FontSize="11" Foreground="{StaticResource BrushTextDim}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </DockPanel>
         </Border>
 
-        <!-- Chat Area -->
-        <ListBox x:Name="ChatList" Grid.Row="1" Background="Transparent" BorderThickness="0" Padding="10" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+        <!-- Chat History -->
+        <ListBox Grid.Row="1" x:Name="ChatList" ItemsSource="{Binding Messages}" Background="Transparent" BorderThickness="0" Padding="24" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
             <ListBox.ItemTemplate>
                 <DataTemplate>
-                    <Border CornerRadius="14" Padding="12,10" Margin="0,6" MaxWidth="550"
-                            HorizontalAlignment="{Binding IsMe, Converter={StaticResource BooleanToAlignmentConverter}}"
-                            Background="{Binding IsMe, Converter={StaticResource BooleanToColorConverter}}">
-                        <Border.Effect>
-                            <DropShadowEffect BlurRadius="10" ShadowDepth="1" Opacity="0.1"/>
-                        </Border.Effect>
+                    <Grid Margin="0,8" MaxWidth="500" HorizontalAlignment="{Binding IsMe, Converter={StaticResource BooleanToAlignmentConverter}}">
                         <StackPanel>
-                            <TextBlock Text="{Binding Content}" Foreground="White" TextWrapping="Wrap" FontSize="14" LineHeight="20"/>
-                            <TextBlock Text="{Binding Timestamp, StringFormat=HH:mm}" Foreground="#CCF1F5F9" FontSize="10" HorizontalAlignment="Right" Margin="0,4,0,0" Opacity="0.7"/>
+                            <!-- Context Menu for both -->
+                            <StackPanel.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Copy Text" Click="Copy_Click"/>
+                                    <MenuItem Header="Open File Location" Click="OpenLocation_Click" 
+                                              Visibility="{Binding Type, Converter={StaticResource StringToVisibilityConverter}}"/>
+                                </ContextMenu>
+                            </StackPanel.ContextMenu>
+
+                            <!-- Text Bubble -->
+                            <Border Background="{Binding IsMe, Converter={StaticResource BooleanToColorConverter}}" 
+                                    BorderBrush="{StaticResource BrushGlassBorder}" BorderThickness="1"
+                                    CornerRadius="{Binding IsMe, Converter={StaticResource BooleanToCornerConverter}}"  
+                                    Padding="16,12" 
+                                    Visibility="{Binding Type, Converter={StaticResource InverseStringToVisibilityConverter}}">
+                                <TextBox Text="{Binding Content, Mode=OneWay}" TextWrapping="Wrap" Background="Transparent" BorderThickness="0" Foreground="White" IsReadOnly="True" FontSize="14"/>
+                            </Border>
+
+                            <!-- File Card (Glassmorphism Style) -->
+                            <Border x:Name="FileCard" Visibility="{Binding Type, Converter={StaticResource StringToVisibilityConverter}}" Padding="16" Background="{StaticResource BrushGlassFill}" BorderBrush="{StaticResource BrushGlassBorder}" BorderThickness="1" CornerRadius="16" MinWidth="320">
+                                <StackPanel>
+                                    <DockPanel LastChildFill="True">
+                                        <!-- File Icon Circle -->
+                                        <Grid DockPanel.Dock="Left" Width="48" Height="48" Margin="0,0,16,0">
+                                            <Border CornerRadius="12" Background="{StaticResource BrushPrimaryTransparent}" Opacity="0.5"/>
+                                            <TextBlock Text="&#xE8A5;" FontFamily="Segoe MDL2 Assets" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="White"/>
+                                        </Grid>
+                                        
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding FileName}" Foreground="White" FontWeight="Bold" FontSize="14" TextTrimming="CharacterEllipsis" MaxWidth="220"/>
+                                            <TextBlock Text="{Binding FileSizeFormatted}" Foreground="{StaticResource BrushTextDim}" FontSize="12" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </DockPanel>
+
+                                    <!-- Progress Area -->
+                                    <Grid Margin="0,16,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ProgressBar Value="{Binding Progress}" Height="4" Margin="0,0,12,0" Background="#1AFFFFFF" BorderThickness="0" VerticalAlignment="Center">
+                                            <ProgressBar.Template>
+                                                <ControlTemplate TargetType="ProgressBar">
+                                                    <Grid x:Name="TemplateRoot">
+                                                        <Border Background="{TemplateBinding Background}" CornerRadius="2"/>
+                                                        <Border x:Name="PART_Indicator" HorizontalAlignment="Left" CornerRadius="2">
+                                                            <Border.Background>
+                                                                <SolidColorBrush Color="{StaticResource ColorPrimary}"/>
+                                                            </Border.Background>
+                                                        </Border>
+                                                    </Grid>
+                                                </ControlTemplate>
+                                            </ProgressBar.Template>
+                                        </ProgressBar>
+                                        <TextBlock Grid.Column="1" Text="{Binding ProgressText}" Foreground="{StaticResource BrushPrimary}" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
+                                    </Grid>
+
+                                    <!-- File Actions -->
+                                    <Grid Margin="0,16,0,0" Visibility="{Binding Progress, Converter={StaticResource ProgressToVisibilityConverter}}">
+                                        <Button Content="Open Folder" Style="{StaticResource ModernButton}" Height="34" FontSize="12" Click="OpenLocation_Click" Padding="15,5" HorizontalAlignment="Left"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Delivery Status Footer -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,4,0" Opacity="0.6">
+                                <TextBlock Text="{Binding SenderName}" Foreground="{StaticResource BrushTextDim}" FontSize="10" Margin="0,0,6,0" Visibility="{Binding SenderName, Converter={StaticResource InverseStringToVisibilityConverter}}"/>
+                                <TextBlock Text="{Binding Timestamp, StringFormat=HH:mm}" Foreground="{StaticResource BrushTextDim}" FontSize="10"/>
+                                <TextBlock Text="{Binding DeliveryIcon}" Foreground="{StaticResource BrushPrimary}" FontSize="10" Margin="4,0,0,0"/>
+                            </StackPanel>
                         </StackPanel>
-                    </Border>
+                    </Grid>
                 </DataTemplate>
             </ListBox.ItemTemplate>
             <ListBox.ItemContainerStyle>
@@ -59,19 +137,57 @@
             </ListBox.ItemContainerStyle>
         </ListBox>
 
-        <!-- Modern Input Area -->
-        <Border Grid.Row="2" Background="{StaticResource BrushSurface}" Padding="15" BorderBrush="#4A3B35" BorderThickness="0,1,0,0" AllowDrop="True" Drop="Border_Drop" DragOver="Border_DragOver">
+        <!-- Input Area (Pill/Glass Style) -->
+        <Border Grid.Row="2" Background="{StaticResource BrushDark}" Padding="24,4,24,24" AllowDrop="True" Drop="Border_Drop" DragOver="Border_DragOver">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <Button Grid.Column="0" Content="📎" Width="40" Background="Transparent" BorderThickness="0" Foreground="{StaticResource BrushTextDim}" FontSize="18" Click="Attach_Click" ToolTip="Attach File"/>
-                <TextBox Grid.Column="1" x:Name="InputBox" Style="{StaticResource ModernTextBox}" 
-                         Tag="Type a message or drop a file..." KeyDown="InputBox_KeyDown" Margin="10,0,0,0"/>
-                <Button Grid.Column="2" Content="Send" Style="{StaticResource ModernButton}" Margin="12,0,0,0" Click="Send_Click"/>
+
+                <Border Background="{StaticResource BrushSurface}" CornerRadius="26" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Button x:Name="AttachButton" Content="&#xE723;" FontFamily="Segoe MDL2 Assets" Click="Attach_Click" FontSize="18" Background="Transparent" Foreground="{StaticResource BrushTextDim}" BorderThickness="0" Width="52" Height="52" Cursor="Hand" ToolTip="Attach File"/>
+                        <TextBox Grid.Column="1" x:Name="InputBox" Style="{StaticResource ModernTextBox}" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" KeyDown="InputBox_KeyDown" Padding="0,4,16,4" Tag="Type a message..."/>
+                    </Grid>
+                </Border>
+
+                <Button Grid.Column="1" x:Name="SendButton" Click="Send_Click" Margin="16,0,0,0" Width="52" Height="52" BorderThickness="0" Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+                                <Ellipse x:Name="bg" Fill="{StaticResource BrushPrimary}"/>
+                                <TextBlock Text="&#xE724;" FontFamily="Segoe MDL2 Assets" Foreground="#0F1923" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="2,0,0,0"/>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bg" Property="Opacity" Value="0.9"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
             </Grid>
+        </Border>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="3" Height="28" Background="{StaticResource BrushSurface}" BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,1,0,0">
+            <DockPanel LastChildFill="True" Margin="12,0">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Privacy" Foreground="{StaticResource BrushTextDim}" FontSize="10" Margin="8,0" Cursor="Hand"/>
+                    <TextBlock Text="Settings" Foreground="{StaticResource BrushTextDim}" FontSize="10" Margin="8,0" Cursor="Hand"/>
+                    <TextBlock x:Name="VersionText" Text="" Foreground="{StaticResource BrushTextDim}" FontSize="10" Margin="8,0"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Ellipse Width="6" Height="6" Fill="{StaticResource BrushPrimary}" Margin="0,0,8,0"/>
+                    <TextBlock x:Name="StatusBarConnectionText" Text="0 device(s) connected" Foreground="{StaticResource BrushTextDim}" FontSize="10"/>
+                </StackPanel>
+            </DockPanel>
         </Border>
     </Grid>
 </Window>
