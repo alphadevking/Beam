@@ -153,9 +153,16 @@ class MainActivity : AppCompatActivity(), BeamTcpClient.BeamSocketListener, Mess
 
                 fileSender.sendFile(uri) { progress: Int ->
                     runOnUiThread {
-                        val oldMsg = messages[msgIndex]
-                        messages[msgIndex] = oldMsg.copy(progress = progress)
-                        adapter.notifyItemChanged(msgIndex)
+                        val idx = messages.indexOfLast { it.type == "file" && it.fileName == fileName && it.isMe }
+                        if (idx != -1) {
+                            val oldMsg = messages[idx]
+                            messages[idx] = oldMsg.copy(
+                                progress = progress,
+                                deliveryStatus = if (progress >= 100) "sent" else oldMsg.deliveryStatus
+                            )
+                            adapter.notifyItemChanged(idx)
+                            if (progress >= 100) chatRecyclerView.scrollToPosition(idx)
+                        }
                     }
                 }
             }
@@ -250,8 +257,16 @@ class MainActivity : AppCompatActivity(), BeamTcpClient.BeamSocketListener, Mess
                     }
                 } else if (type == "delivery_receipt") {
                     val messageId = data["messageId"] as? String
-                    if (messageId != null) {
+                    val fileName = data["fileName"] as? String
+                    
+                    if (messageId?.isNotBlank() == true) {
                         val idx = messages.indexOfFirst { it.messageId == messageId }
+                        if (idx != -1) {
+                            messages[idx] = messages[idx].copy(deliveryStatus = "delivered")
+                            adapter.notifyItemChanged(idx)
+                        }
+                    } else if (fileName?.isNotBlank() == true) {
+                        val idx = messages.indexOfLast { it.type == "file" && it.fileName == fileName && it.isMe }
                         if (idx != -1) {
                             messages[idx] = messages[idx].copy(deliveryStatus = "delivered")
                             adapter.notifyItemChanged(idx)

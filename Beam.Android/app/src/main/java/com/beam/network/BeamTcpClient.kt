@@ -48,7 +48,7 @@ class BeamTcpClient(private val listener: BeamSocketListener) {
                 socket?.sendBufferSize = 4 * 1024 * 1024 // 4MB Lightning Buffer
                 socket?.receiveBufferSize = 4 * 1024 * 1024
 
-                outputStream = DataOutputStream(BufferedOutputStream(socket!!.getOutputStream(), 4 * 1024 * 1024))
+                outputStream = DataOutputStream(socket!!.getOutputStream())
                 inputStream = DataInputStream(BufferedInputStream(socket!!.getInputStream(), 4 * 1024 * 1024))
 
                 isConnected = true
@@ -122,6 +122,7 @@ class BeamTcpClient(private val listener: BeamSocketListener) {
                     var bytesReceived = 0L
                     
                     FileOutputStream(file).use { fos ->
+                        var lastProgress = -1
                         while (bytesReceived < fileSize) {
                             val toRead = Math.min(buffer.size.toLong(), fileSize - bytesReceived).toInt()
                             val readSize = inputStream!!.read(buffer, 0, toRead)
@@ -129,7 +130,11 @@ class BeamTcpClient(private val listener: BeamSocketListener) {
                             fos.write(buffer, 0, readSize)
                             bytesReceived += readSize
                             
-                            listener.onProgress(fileName, (bytesReceived * 100 / fileSize).toInt())
+                            val progress = (bytesReceived * 100 / fileSize).toInt()
+                            if (progress != lastProgress) {
+                                lastProgress = progress
+                                listener.onProgress(fileName, progress)
+                            }
                         }
                         fos.flush()
                     }
@@ -204,10 +209,15 @@ class BeamTcpClient(private val listener: BeamSocketListener) {
                 val buffer = ByteArray(4 * 1024 * 1024)
                 var bytesSent = 0L
                 var read: Int
+                var lastProgress = -1
                 while (input.read(buffer).also { read = it } != -1) {
                     out.write(buffer, 0, read)
                     bytesSent += read
-                    onProgress((bytesSent * 100 / fileSize).toInt())
+                    val progress = (bytesSent * 100 / fileSize).toInt()
+                    if (progress != lastProgress) {
+                        lastProgress = progress
+                        onProgress(progress)
+                    }
                 }
                 out.flush()
                 true

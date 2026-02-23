@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Buffers.Binary;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -90,8 +91,7 @@ namespace Beam.Windows.Services
 
             byte[] header = new byte[5];
             int length = payload.Length + 1; // +1 for type byte
-            byte[] lenBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(length));
-            Array.Copy(lenBytes, 0, header, 0, 4);
+            BinaryPrimitives.WriteInt32BigEndian(header.AsSpan(0, 4), length);
             header[4] = type;
 
             foreach (var client in clientsCopy)
@@ -123,26 +123,25 @@ namespace Beam.Windows.Services
             int headerLength = 1 + 4 + nameBytes.Length + 8;
             
             byte[] header = new byte[4 + headerLength];
-            byte[] lenBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(headerLength));
-            Array.Copy(lenBytes, 0, header, 0, 4);
+            BinaryPrimitives.WriteInt32BigEndian(header.AsSpan(0, 4), headerLength);
             header[4] = 2; // Type 2: Raw Stream
 
-            byte[] nameLenBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(nameBytes.Length));
-            Array.Copy(nameLenBytes, 0, header, 5, 4);
+            BinaryPrimitives.WriteInt32BigEndian(header.AsSpan(5, 4), nameBytes.Length);
             Array.Copy(nameBytes, 0, header, 9, nameBytes.Length);
 
-            byte[] sizeBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(fileSize));
-            Array.Copy(sizeBytes, 0, header, 9 + nameBytes.Length, 8);
+            BinaryPrimitives.WriteInt64BigEndian(header.AsSpan(9 + nameBytes.Length, 8), fileSize);
 
             // Send header to all
             foreach (var client in clientsCopy)
             {
                 client.SendRaw(header);
+                client.Flush();
             }
 
             byte[] buffer = new byte[4 * 1024 * 1024]; // 4MB Buffer
             long totalSent = 0;
             int read;
+            int lastReportedProgress = -1;
 
             while ((read = await input.ReadAsync(buffer, 0, buffer.Length)) > 0)
             {
@@ -151,7 +150,12 @@ namespace Beam.Windows.Services
                     client.SendRaw(buffer, read);
                 }
                 totalSent += read;
-                onProgress?.Invoke((int)((double)totalSent / fileSize * 100));
+                int currentProgress = (int)((double)totalSent / fileSize * 100);
+                if (currentProgress != lastReportedProgress)
+                {
+                    lastReportedProgress = currentProgress;
+                    onProgress?.Invoke(currentProgress);
+                }
             }
 
             foreach (var client in clientsCopy) client.Flush();
@@ -195,7 +199,7 @@ namespace Beam.Windows.Services
                     {
                         // Read 4-byte length
                         if (!await ReadFullyAsync(_stream, lenBuffer, 4, token)) break;
-                        int totalLength = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(lenBuffer, 0));
+                        int totalLength = BinaryPrimitives.ReadInt32BigEndian(lenBuffer);
 
                         if (totalLength <= 0) continue; 
 
@@ -244,9 +248,10 @@ namespace Beam.Windows.Services
                     dynamic? data = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
                     if (data?.type == "identify")
                     {
-                        string id = data.deviceId;
-                        string name = data.deviceName;
+                        string id = (string)data.deviceId ?? "";
+                        string name = (string)data.deviceName ?? "Phone";
                         DeviceId = id;
+                        DeviceName = name;
 
                         lock (_host._clients)
                         {
@@ -276,7 +281,7 @@ namespace Beam.Windows.Services
                     // Header: [4b NameLen][UTF-8 Name][8b FileSize]
                     byte[] nameLenBuf = new byte[4];
                     if (!await ReadFullyAsync(_stream, nameLenBuf, 4, token)) return;
-                    int nameLen = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(nameLenBuf, 0));
+                    int nameLen = BinaryPrimitives.ReadInt32BigEndian(nameLenBuf);
 
                     byte[] nameBuf = new byte[nameLen];
                     if (!await ReadFullyAsync(_stream, nameBuf, nameLen, token)) return;
@@ -284,17 +289,19 @@ namespace Beam.Windows.Services
 
                     byte[] sizeBuf = new byte[8];
                     if (!await ReadFullyAsync(_stream, sizeBuf, 8, token)) return;
-                    long fileSize = IPAddress.NetworkToHostOrder(BitConverter.ToInt64(sizeBuf, 0));
+                    long fileSize = BinaryPrimitives.ReadInt64BigEndian(sizeBuf);
 
                     // Notify UI that a high-speed stream is starting
                     _host.OnMessageReceived?.Invoke(Newtonsoft.Json.JsonConvert.SerializeObject(new { 
                         type = "stream_start", 
                         name = fileName, 
-                        size = fileSize 
+                        size = fileSize,
+                        senderId = string.IsNullOrEmpty(DeviceName) ? "Phone" : DeviceName
                     }));
 
                     long totalReceived = 0;
                     byte[] buffer = new byte[4 * 1024 * 1024]; // 4MB High-Speed Buffer
+                    int lastReportedProgress = -1;
                     
                     using (var fs = _host.GetFileStream(fileName))
                     {
@@ -304,15 +311,23 @@ namespace Beam.Windows.Services
                             int read = await _stream.ReadAsync(buffer, 0, toRead, token);
                             
                             if (read <= 0) 
-                                throw new IOException("Connection lost during high-speed stream transfer.");
+                            {
+                                Console.WriteLine($"[TcpHost] Warning: Stream EOF reached early. Expected {fileSize}, got {totalReceived}");
+                                break; // Gracefully stop if the sender stopped sending bytes early!
+                            }
                             
-                            fs.Write(buffer, 0, read);
+                            await fs.WriteAsync(buffer, 0, read, token);
                             totalReceived += read;
                             
                             // Frequent progress reporting for smooth UI
-                            _host.OnFileProgress?.Invoke(fileName, (int)((double)totalReceived / fileSize * 100));
+                            int currentProgress = (int)((double)totalReceived / fileSize * 100);
+                            if (currentProgress != lastReportedProgress)
+                            {
+                                lastReportedProgress = currentProgress;
+                                _host.OnFileProgress?.Invoke(fileName, currentProgress);
+                            }
                         }
-                        fs.Flush();
+                        await fs.FlushAsync(token);
                     }
 
                     _host.OnMessageReceived?.Invoke(Newtonsoft.Json.JsonConvert.SerializeObject(new { 
@@ -322,11 +337,12 @@ namespace Beam.Windows.Services
                     }));
                 } catch (Exception ex) {
                     Console.WriteLine($"[TcpHost] Lightning Stream Error for {fileName ?? "unknown"}: {ex.Message}");
-                    // Connection usually closes in RunAsync finally block
+                    throw; // Throw to break the main RunAsync network loop
                 }
             }
 
             public string DeviceId { get; private set; } = "";
+            public string DeviceName { get; private set; } = "Phone";
 
             private string GetIp()
             {

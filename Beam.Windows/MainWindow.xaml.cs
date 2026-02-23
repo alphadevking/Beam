@@ -56,7 +56,7 @@ namespace Beam.Windows
 
                 _tcpHost.OnMessageReceived = (message) =>
                 {
-                    Dispatcher.Invoke(() =>
+                    Dispatcher.InvokeAsync(() =>
                     {
                         try
                         {
@@ -111,6 +111,10 @@ namespace Beam.Windows
                                     msg.DeliveryStatus = "delivered";
                                     msg.Progress = 100;
                                 }
+
+                                // Send delivery receipt back to Android
+                                var receipt = new { type = "delivery_receipt", fileName = name, status = "delivered", messageId = "" };
+                                _tcpHost.Broadcast(JsonConvert.SerializeObject(receipt));
                             }
                             else if (msgData?.type == "delivery_receipt")
                             {
@@ -134,7 +138,7 @@ namespace Beam.Windows
                     {
                         string? savedPath = _fileReceiver.HandleBinaryChunk(data, (fileName, progress) =>
                         {
-                            Dispatcher.Invoke(() =>
+                            Dispatcher.InvokeAsync(() =>
                             {
                                 var msg = Messages.FirstOrDefault(m => m.Type == "file" && m.FileName == fileName && !m.IsMe);
                                 if (msg != null)
@@ -146,7 +150,7 @@ namespace Beam.Windows
 
                         if (savedPath != null)
                         {
-                            Dispatcher.Invoke(() =>
+                            Dispatcher.InvokeAsync(() =>
                             {
                                 string fileName = System.IO.Path.GetFileName(savedPath);
                                 var msg = Messages.FirstOrDefault(m => m.Type == "file" && m.FileName == fileName && !m.IsMe);
@@ -156,9 +160,14 @@ namespace Beam.Windows
                     }
                 };
 
+                _tcpHost.OnGetFileStream = (fileName) =>
+                {
+                    return _fileReceiver.GetStream(fileName);
+                };
+
                 _tcpHost.OnFileProgress = (fileName, progress) =>
                 {
-                    Dispatcher.Invoke(() =>
+                    Dispatcher.InvokeAsync(() =>
                     {
                         var msg = Messages.FirstOrDefault(m => m.Type == "file" && m.FileName == fileName && !m.IsMe);
                         if (msg != null)
@@ -175,7 +184,7 @@ namespace Beam.Windows
 
                 _tcpHost.OnDeviceIdentified = (ip, name) => 
                 {
-                    Dispatcher.Invoke(() => 
+                    Dispatcher.InvokeAsync(() => 
                     {
                         ConnectionText.Text = $"📱 {name} ({ip})";
                     });
@@ -183,7 +192,7 @@ namespace Beam.Windows
 
                 _tcpHost.OnClientConnected = (clientIp) =>
                 {
-                    Dispatcher.Invoke(() =>
+                    Dispatcher.InvokeAsync(() =>
                     {
                         ConnectionText.Text = $"📱 Connected ({clientIp})";
                         StatusBarConnectionText.Text = $"{_tcpHost.ClientCount} device(s) connected";
@@ -192,7 +201,7 @@ namespace Beam.Windows
 
                 _tcpHost.OnClientDisconnected = (clientIp) =>
                 {
-                    Dispatcher.Invoke(() =>
+                    Dispatcher.InvokeAsync(() =>
                     {
                         if (_tcpHost.ClientCount == 0)
                             ConnectionText.Text = "Waiting for device...";
@@ -235,7 +244,7 @@ namespace Beam.Windows
                     while (_tcpHost.ClientCount == 0) await Task.Delay(500);
                     _tcpHost.Broadcast(JsonConvert.SerializeObject(msg));
                     
-                    Dispatcher.Invoke(() => 
+                    Dispatcher.InvokeAsync(() => 
                     {
                         chatMsg.DeliveryStatus = "sent";
                         ChatList.ScrollIntoView(chatMsg);
@@ -283,7 +292,7 @@ namespace Beam.Windows
                     
                     await _fileSender!.SendFile(file, progress => 
                     {
-                        Dispatcher.Invoke(() => 
+                        Dispatcher.InvokeAsync(() => 
                         {
                             msg.Progress = progress;
                         });
@@ -313,7 +322,7 @@ namespace Beam.Windows
                     
                     await _fileSender!.SendFile(file, progress => 
                     {
-                        Dispatcher.Invoke(() => 
+                        Dispatcher.InvokeAsync(() => 
                         {
                             msg.Progress = progress;
                         });
@@ -340,16 +349,75 @@ namespace Beam.Windows
             }
         }
  
+        private void OpenFile_Click(object sender, RoutedEventArgs e)
+        {
+            var msg = (sender as Button)?.DataContext as ChatMessage;
+            if (msg != null && !string.IsNullOrEmpty(msg.LocalFilePath) && File.Exists(msg.LocalFilePath))
+            {
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = msg.LocalFilePath,
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Could not open file: {ex.Message}");
+                }
+            }
+        }
+
+        private void SaveAs_Click(object sender, RoutedEventArgs e)
+        {
+            var msg = (sender as Button)?.DataContext as ChatMessage;
+            if (msg != null && !string.IsNullOrEmpty(msg.LocalFilePath) && File.Exists(msg.LocalFilePath))
+            {
+                var dialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    FileName = msg.FileName,
+                    DefaultExt = System.IO.Path.GetExtension(msg.LocalFilePath),
+                    Title = "Save file as..."
+                };
+
+                if (dialog.ShowDialog() == true)
+                {
+                    try
+                    {
+                        File.Copy(msg.LocalFilePath, dialog.FileName, true);
+                        MessageBox.Show("File saved successfully.");
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Could not save file: {ex.Message}");
+                    }
+                }
+            }
+        }
+  
         private void OpenLocation_Click(object sender, RoutedEventArgs e)
         {
             ChatMessage? msg = null;
             if (sender is MenuItem menuItem && menuItem.DataContext is ChatMessage mm) msg = mm;
             else if (sender is Button button && button.DataContext is ChatMessage bm) msg = bm;
 
-            if (msg != null && !string.IsNullOrEmpty(msg.LocalFilePath))
+            if (msg != null && !string.IsNullOrEmpty(msg.LocalFilePath) && File.Exists(msg.LocalFilePath))
             {
-                string argument = $"/select,\"{msg.LocalFilePath}\"";
-                System.Diagnostics.Process.Start("explorer.exe", argument);
+                try
+                {
+                    string argument = $"/select,\"{msg.LocalFilePath}\"";
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "explorer.exe",
+                        Arguments = argument,
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Could not open location: {ex.Message}");
+                }
             }
         }
  
